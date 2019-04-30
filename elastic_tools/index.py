@@ -10,6 +10,7 @@ import argparse
 import glob
 import sys
 import json
+import os
 
 from elasticsearch import Elasticsearch
 
@@ -18,7 +19,6 @@ from elasticsearch import Elasticsearch
 def main(argv):
     parser = argparse.ArgumentParser(description='Index one or more json files (including lists) into elastic')
     parser.add_argument('-i', '--indexname', help="name of the index to use")
-    parser.add_argument('-t', '--type', help="type of item to index")
     parser.add_argument('-f', '--fid', action="store_true", help="use the filename as elastic id")
     parser.add_argument('-r', '--recurse', action="store_true", help="recursively index files in sub-directories")
     parser.add_argument('filespec', help="path to the json files you want to index")
@@ -27,6 +27,7 @@ def main(argv):
     # initialize
     lstFiles = []
     nFiles = 0
+    nErrors = 0
     nSent = 0
     
     if args.filespec:
@@ -71,23 +72,23 @@ def main(argv):
             print "list:",
 
         nFiles = nFiles + 1
-        
+
         for jRec in jData:
-            try:
-                if args.fid:
-                    res = es.index(index=args.indexname, doc_type=args.type, id=sFile, body=jRec)
-                else:
-                    res = es.index(index=args.indexname, doc_type=args.type, body=jRec)
-                print res['_id'], res['created'],
-            except Exception, e:
-                print "error:", e
-                continue
-            nSent = nSent + 1
-        print "ok"
-        
+            if args.fid:
+                res = es.index(index=args.indexname, id=sFile, body=jRec)
+            else:
+                res = es.index(index=args.indexname, body=jRec)
+            print res['_id'], res['result'],
+            if res['result'] == 'created':
+                print "ok"
+                nSent = nSent + 1
+            else:
+                nErrors = nErrors + 1
+                print "*****"
+
     # end for
         
-    print "index.py: indexed", nSent, "records from", nFiles
+    print "index.py: indexed", nSent, "records from", nFiles, "with", nErrors, "errors"
 
 # end main
 
