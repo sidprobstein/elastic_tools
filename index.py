@@ -14,7 +14,8 @@ import os
 
 from elasticsearch import Elasticsearch
 
-#############################################    
+#############################################
+
 
 def main(argv):
     parser = argparse.ArgumentParser(description='Index one or more json files (including lists) into elastic')
@@ -25,36 +26,35 @@ def main(argv):
     args = parser.parse_args()
 
     # initialize
-    lstFiles = []
-    nFiles = 0
-    nErrors = 0
-    nSent = 0
+    n_files = 0
+    n_errors = 0
+    n_sent = 0
     
     if args.filespec:
-        lstFiles = glob.glob(args.filespec)
+        lst_files = glob.glob(args.filespec)
     else:
         sys.exit()
 
-    es = Elasticsearch('http://localhost:9200/')
+    elastic = Elasticsearch('http://localhost:9200/')
 
-    for sFile in lstFiles:
+    for s_file in lst_files:
 
         # process the files
-        if os.path.isdir(sFile):
+        if os.path.isdir(s_file):
             if args.recurse:
                 # recurse into directory
-                for sNewFile in glob.glob(sFile + '/*'):
-                    lstFiles.append(sNewFile)
+                for s_new_file in glob.glob(s_file + '/*'):
+                    lst_files.append(s_new_file)
             continue
         
-        print "index.py: reading:", sFile,
+        print "index.py: reading:", s_file,
         try:
-            f = open(sFile, 'r')
+            f = open(s_file, 'r')
         except Exception, e:
             print "error:", e
             continue
         try:
-            jData = json.load(f)
+            json_data = json.load(f)
         except Exception, e:
             print "error:", e
             f.close()
@@ -62,38 +62,43 @@ def main(argv):
         f.close()
         print "ok, indexing",
 
-        if type(jData) != list:
+        if type(json_data) != list:
             print "file:",
             # make it a list
-            jTmp = jData
-            jData = []
-            jData.append(jTmp)
+            j_tmp = json_data
+            json_data = []
+            json_data.append(j_tmp)
         else:
             print "list:",
 
-        nFiles = nFiles + 1
+        n_files = n_files + 1
 
-        for jRec in jData:
-            if args.fid:
-                res = es.index(index=args.indexname, id=sFile, body=jRec)
-            else:
-                res = es.index(index=args.indexname, body=jRec)
+        for json_record in json_data:
+            try:
+                if args.fid:
+                    res = elastic.index(index=args.indexname, id=s_file, body=json_record)
+                else:
+                    res = elastic.index(index=args.indexname, body=json_record)
+            except elasticsearch.ElasticsearchException, elastic1:
+                print "error:", elastic1
+                continue
             print res['_id'], res['result'],
             if res['result'] == 'created':
                 print "ok"
-                nSent = nSent + 1
-            else:
-                nErrors = nErrors + 1
-                print "*****"
+                n_sent = n_sent + 1
+            # else:
+            #     n_errors = n_errors + 1
+            #     print "*****"
 
     # end for
         
-    print "index.py: indexed", nSent, "records from", nFiles, "with", nErrors, "errors"
+    print "index.py: indexed", n_sent, "records from", n_files, "with", n_errors, "errors"
 
 # end main
 
-#############################################    
-    
+#############################################
+
+
 if __name__ == "__main__":
     main(sys.argv)
 
