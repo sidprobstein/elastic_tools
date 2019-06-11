@@ -22,6 +22,7 @@ def main(argv):
     parser.add_argument('-i', '--indexname', help="name of the index to use")
     parser.add_argument('-f', '--fid', action="store_true", help="use the filename as elastic id")
     parser.add_argument('-r', '--recurse', action="store_true", help="recursively index files in sub-directories")
+    parser.add_argument('-s', '--server', help="the elastic server to send to in URL format")
     parser.add_argument('filespec', help="path to the json files you want to index")
     args = parser.parse_args()
 
@@ -35,7 +36,10 @@ def main(argv):
     else:
         sys.exit()
 
-    elastic = Elasticsearch('http://localhost:9200/')
+    if args.server:
+        elastic = Elasticsearch(args.server)
+    else:
+        elastic = Elasticsearch('http://localhost:9200/')
 
     for s_file in lst_files:
 
